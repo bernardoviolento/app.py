@@ -1,0 +1,582 @@
+from flask import Flask, render_template_string, request
+import random
+
+app = Flask(__name__)
+
+HTML = """
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Averiguador de Resenha 2020</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-1: #09090f;
+      --bg-2: #10101a;
+      --card: rgba(20, 20, 34, 0.82);
+      --line: rgba(255,255,255,0.10);
+      --text: #f4f7fb;
+      --muted: #aeb7c8;
+      --accent: #ff3c7a;
+      --accent-2: #8c52ff;
+      --accent-3: #00d4ff;
+      --good: #35e07d;
+      --warn: #ffcf40;
+      --bad: #ff5e5e;
+      --shadow: 0 15px 40px rgba(0,0,0,0.35);
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% 20%, rgba(255, 60, 122, 0.22), transparent 20%),
+        radial-gradient(circle at 90% 15%, rgba(0, 212, 255, 0.16), transparent 18%),
+        radial-gradient(circle at 70% 80%, rgba(140, 82, 255, 0.20), transparent 22%),
+        linear-gradient(135deg, var(--bg-1), var(--bg-2));
+      overflow-x: hidden;
+    }
+
+    .noise {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.06;
+      background-image:
+        linear-gradient(transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%),
+        repeating-linear-gradient(
+          0deg,
+          rgba(255,255,255,0.04) 0px,
+          rgba(255,255,255,0.04) 1px,
+          transparent 1px,
+          transparent 3px
+        );
+      mix-blend-mode: screen;
+    }
+
+    .container {
+      width: min(1150px, 92%);
+      margin: 0 auto;
+      padding: 28px 0 60px;
+    }
+
+    .hero {
+      position: relative;
+      margin-top: 18px;
+      padding: 34px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+    }
+
+    .hero::before,
+    .hero::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(60px);
+      opacity: 0.35;
+    }
+
+    .hero::before {
+      width: 230px;
+      height: 230px;
+      background: var(--accent);
+      top: -90px;
+      right: -40px;
+    }
+
+    .hero::after {
+      width: 190px;
+      height: 190px;
+      background: var(--accent-3);
+      bottom: -70px;
+      left: -40px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-bottom: 20px;
+      letter-spacing: 0.4px;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 5vw, 4rem);
+      line-height: 1.03;
+      max-width: 760px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      text-shadow: 0 0 18px rgba(255,255,255,0.08);
+    }
+
+    .gradient {
+      background: linear-gradient(90deg, var(--accent), var(--accent-3), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .subtitle {
+      max-width: 800px;
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.75;
+    }
+
+    .grid {
+      margin-top: 24px;
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 24px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .main-card {
+      padding: 26px;
+    }
+
+    .side-card {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .section-title {
+      font-size: 1.2rem;
+      margin-bottom: 12px;
+    }
+
+    .section-desc {
+      color: var(--muted);
+      font-size: 0.96rem;
+      line-height: 1.7;
+      margin-bottom: 18px;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 0.95rem;
+      color: #dfe6f5;
+      font-weight: bold;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 190px;
+      resize: vertical;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 18px;
+      background: rgba(8, 10, 18, 0.88);
+      color: var(--text);
+      padding: 18px;
+      font-size: 1rem;
+      line-height: 1.6;
+      outline: none;
+      transition: 0.25s ease;
+    }
+
+    textarea:focus {
+      border-color: rgba(0, 212, 255, 0.45);
+      box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.10);
+      transform: translateY(-1px);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    button,
+    .ghost-btn {
+      border: none;
+      cursor: pointer;
+      border-radius: 16px;
+      padding: 14px 18px;
+      font-weight: bold;
+      font-size: 0.98rem;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 180px;
+    }
+
+    button {
+      color: white;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      box-shadow: 0 12px 30px rgba(140, 82, 255, 0.28);
+    }
+
+    .ghost-btn {
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+    }
+
+    button:hover,
+    .ghost-btn:hover {
+      transform: translateY(-2px) scale(1.01);
+    }
+
+    .result {
+      margin-top: 24px;
+      padding: 22px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+      animation: pop 0.35s ease;
+    }
+
+    @keyframes pop {
+      from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .result-tag {
+      display: inline-block;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 0.84rem;
+      font-weight: bold;
+      margin-bottom: 14px;
+    }
+
+    .positive {
+      background: rgba(53, 224, 125, 0.14);
+      color: #97ffbd;
+      border: 1px solid rgba(53, 224, 125, 0.28);
+    }
+
+    .neutral {
+      background: rgba(255, 94, 94, 0.14);
+      color: #ffadad;
+      border: 1px solid rgba(255, 94, 94, 0.24);
+    }
+
+    .result h3 {
+      font-size: 1.55rem;
+      margin-bottom: 10px;
+    }
+
+    .result p {
+      color: var(--muted);
+      line-height: 1.8;
+      font-size: 1rem;
+    }
+
+    .meter {
+      margin-top: 16px;
+    }
+
+    .meter-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: #dbe5f5;
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+    }
+
+    .bar {
+      height: 16px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-3));
+      box-shadow: inset 0 0 14px rgba(255,255,255,0.22);
+      transition: width 0.4s ease;
+    }
+
+    .meme-box {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .meme-box h4 {
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+
+    .meme-box p {
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 0.95rem;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .chip {
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      color: #eef3ff;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .footer {
+      text-align: center;
+      color: var(--muted);
+      margin-top: 26px;
+      font-size: 0.95rem;
+      line-height: 1.7;
+    }
+
+    .mini-note {
+      margin-top: 14px;
+      color: #cfd7e5;
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        padding: 24px;
+      }
+
+      .main-card,
+      .side-card {
+        padding: 20px;
+      }
+
+      button,
+      .ghost-btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="noise"></div>
+
+  <div class="container">
+    <section class="hero">
+      <div class="badge">🎭 Detector oficial de energia de resenha •</div>
+      <h1>
+        Averiguador de <span class="gradient">Possível Resenha</span>
+      </h1>
+      <p class="subtitle">
+        Jogue sua frase, comentário ou convite no sistema e descubra se o clima está mais para <strong>resenha positiva</strong>
+        ou para <strong>suspeita de pouca resenha</strong>. Aqui a lógica é totalmente resenhuda: o veredito final é 50% a 50%,
+        porque toda grande resenha também depende da aura do momento.
+      </p>
+    </section>
+
+    <section class="grid">
+      <div class="card main-card">
+        <h2 class="section-title">Mande o texto para averiguação</h2>
+        <p class="section-desc">
+          Pode ser convite, legenda, frase aleatória, plano do rolê ou qualquer texto. O motor do site mistura estética de meme,
+          energia de resenha e um toque de caos calculado.
+        </p>
+
+        <form method="POST">
+          <div class="form-group">
+            <label for="texto">Texto da resenha:</label>
+            <textarea id="texto" name="texto" placeholder="Ex.: Qual é a resenha de hoje?">{{ texto }}</textarea>
+          </div>
+
+          <div class="btn-row">
+            <button type="submit">Averiguar agora</button>
+            <a class="ghost-btn" href="/">Limpar e recomeçar</a>
+          </div>
+        </form>
+
+        {% if resultado %}
+        <div class="result">
+          <span class="result-tag {{ classe }}">{{ selo }}</span>
+          <h3>{{ titulo_resultado }}</h3>
+          <p>{{ descricao }}</p>
+
+          <div class="meter">
+            <div class="meter-top">
+              <span>Chance de resenha positiva</span>
+              <strong>{{ porcentagem }}%</strong>
+            </div>
+            <div class="bar">
+              <div class="fill" style="width: {{ porcentagem }}%;"></div>
+            </div>
+          </div>
+
+          <p class="mini-note">Frase temática: <strong>{{ frase_meme }}</strong></p>
+        </div>
+        {% endif %}
+      </div>
+
+      <aside class="card side-card">
+        <div class="meme-box">
+          <h4>📢 Leituras do sistema</h4>
+          <p>
+            O algoritmo mede apenas uma coisa: a <em>vibe</em>. Se bateu aquela sensação de “isso aqui tem potencial”, ele responde.
+            Se não bateu, ele entrega o famoso caos estatístico.
+          </p>
+        </div>
+
+        <div class="meme-box">
+          <h4>🔥 Referências da interface</h4>
+          <div class="chips">
+            <span class="chip">resenha</span>
+            <span class="chip">city boy</span>
+            <span class="chip">salada foguete foguete</span>
+            <span class="chip">six seven</span>
+            <span class="chip">resenhudos</span>
+            <span class="chip">semen</span>
+          </div>
+        </div>
+
+        <div class="meme-box">
+          <h4>🧪 Como funciona?</h4>
+          <p>
+            O resultado foi feito para ser exatamente <strong>50% sim</strong> e <strong>50% não</strong>. Ou seja, metade das vezes o sistema
+            crava energia positiva de resenha; na outra metade, ele diz que ainda falta resenha.
+          </p>
+        </div>
+
+        <div class="meme-box">
+          <h4>🎉 Exemplos de uso</h4>
+          <p>
+            “Hoje a tropa vai lançar a boa.”<br>
+            “Esse comentário tá com cara de resenha?”<br>
+            “Será que esse rolê vem forte ou vai flopar?”
+          </p>
+        </div>
+      </aside>
+    </section>
+
+    <div class="footer">
+      Feito em Python com Flask, tudo em um arquivo só, com HTML e CSS fundidos.<br>
+    </div>
+  </div>
+</body>
+</html>
+"""
+
+
+@app.route("/", methods=["GET", "POST"])
+def index():
+    texto = ""
+    resultado = False
+    titulo_resultado = ""
+    descricao = ""
+    selo = ""
+    classe = ""
+    porcentagem = 50
+    frase_meme = ""
+
+    frases_positivas = [
+        "A energia bateu forte: isso tem cara de resenha positiva daquelas.",
+        "O sistema apitou bonito: possibilidade alta de clima bom e risada solta.",
+        "Foi detectado potencial de meme, presença e caos saudável. Sinal verde para a resenha.",
+        "Isso aqui passou no teste do entretenimento. Tá com perfume de resenha memorável.",
+    ]
+
+    frases_neutras = [
+        "O sistema sentiu insegurança na vibe. Pode virar resenha, mas ainda tá no quase.",
+        "Foi detectada pouca pressão de entretenimento. Precisa de mais energia de grupo.",
+        "No momento, o texto ainda não exala resenha positiva com força total.",
+        "A máquina hesitou. Tá faltando aquele tempero que faz todo mundo falar: agora foi.",
+    ]
+
+    frases_meme = [
+        "isso foi muito six seven das ideias",
+        "o detector sentiu a aura da resenha no ar",
+        "clima de meme aplicado com sucesso",
+        "a tropa estatística analisou e deixou passar",
+        "vibes elevadas para nível de resenha premium",
+        "caos, brilho e entretenimento detectados",
+    ]
+
+    if request.method == "POST":
+        texto = request.form.get("texto", "").strip()
+        resultado = True
+
+        positivo = random.choice([True, False])
+
+        if positivo:
+            titulo_resultado = "Resultado: forte chance de salada foguete foguete"
+            descricao = random.choice(frases_positivas)
+            selo = "APROVADO PELO SENSOR DE RESENHA"
+            classe = "positive"
+            porcentagem = 50
+        else:
+            titulo_resultado = "Resultado: a resenha está sem aura, saia daqui beta"
+            descricao = random.choice(frases_neutras)
+            selo = "SUSPEITA DE POUCA RESENHA"
+            classe = "neutral"
+            porcentagem = 50
+
+        frase_meme = random.choice(frases_meme)
+
+    return render_template_string(
+        HTML,
+        texto=texto,
+        resultado=resultado,
+        titulo_resultado=titulo_resultado,
+        descricao=descricao,
+        selo=selo,
+        classe=classe,
+        porcentagem=porcentagem,
+        frase_meme=frase_meme,
+    )
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
